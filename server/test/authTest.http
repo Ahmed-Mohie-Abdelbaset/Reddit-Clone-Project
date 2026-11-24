@@ -1,0 +1,27 @@
+@baseUrl = http://localhost:5000/api
+
+### 1. Register a new user
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "hamzah_dev",
+  "email": "hamzah@example.com",
+  "password": "password123"
+}
+
+### 2. Login (auto-saves the token for the next request)
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "hamzah@example.com",
+  "password": "password123"
+}
+
+### 3. Get Current Logged-In User (Protected)
+@token = {{login.response.body.token}}
+
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
