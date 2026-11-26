@@ -1,0 +1,172 @@
+@baseUrl = http://localhost:5000/api
+
+### 0. Register the two test users (409 if they already exist — safe to re-run)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "ahmed_dev",
+  "email": "ahmed@example.com",
+  "password": "password123"
+}
+
+###
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "hamzah_dev",
+  "email": "hamzah@example.com",
+  "password": "password123"
+}
+
+### 1. Login as the community owner/moderator (ahmed_dev)
+# @name ownerLogin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "ahmed@example.com",
+  "password": "password123"
+}
+
+### 2. Login as the second user (hamzah_dev, joins/leaves)
+# @name memberLogin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "hamzah@example.com",
+  "password": "password123"
+}
+
+### Tokens captured from the logins above
+@ownerToken = {{ownerLogin.response.body.token}}
+@memberToken = {{memberLogin.response.body.token}}
+
+### 3. Create FC27_community as ahmed_dev (201 first run, 409 afterwards — expected)
+# @name createCommunity
+POST {{baseUrl}}/communities
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "name": "FC27_community",
+  "description": "Fifa gaming community"
+}
+
+### 4. Get community by name (public, includes isMember)
+# @name getCommunity
+GET {{baseUrl}}/communities/FC27_community
+
+### 4a. Make sure the second user is not a member (idempotent leave)
+@communityId = {{getCommunity.response.body._id}}
+POST {{baseUrl}}/communities/{{communityId}}/leave
+Authorization: Bearer {{memberToken}}
+
+### 4b. Get with the owner token (isMember: true)
+GET {{baseUrl}}/communities/FC27_community
+Authorization: Bearer {{ownerToken}}
+
+### 4c. Get with the member token (isMember: false)
+GET {{baseUrl}}/communities/FC27_community
+Authorization: Bearer {{memberToken}}
+
+### 5. Search communities by name (public)
+GET {{baseUrl}}/communities/search?q=fc27
+
+### 6. Get a community that does not exist (expect 404)
+GET {{baseUrl}}/communities/doesnotexist
+
+### 7. Join a community as the second user
+POST {{baseUrl}}/communities/{{communityId}}/join
+Authorization: Bearer {{memberToken}}
+
+### 8. Join again (idempotent — memberCount must not change)
+POST {{baseUrl}}/communities/{{communityId}}/join
+Authorization: Bearer {{memberToken}}
+
+### 9. Leave the community as the second user
+POST {{baseUrl}}/communities/{{communityId}}/leave
+Authorization: Bearer {{memberToken}}
+
+### 10. Leave again (idempotent — memberCount must not change)
+POST {{baseUrl}}/communities/{{communityId}}/leave
+Authorization: Bearer {{memberToken}}
+
+### 11. Moderator cannot leave own community (expect 400)
+POST {{baseUrl}}/communities/{{communityId}}/leave
+Authorization: Bearer {{ownerToken}}
+
+### 12. Duplicate name with different casing (expect 409)
+POST {{baseUrl}}/communities
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "name": "Fc27_Community",
+  "description": "Duplicate"
+}
+
+### 13. Invalid name (expect 400)
+POST {{baseUrl}}/communities
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "name": "fc27 community!",
+  "description": "Invalid name"
+}
+
+### 14. Reserved name (expect 400)
+POST {{baseUrl}}/communities
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "name": "search",
+  "description": "Reserved name"
+}
+
+### 15. Create without a token (expect 401)
+POST {{baseUrl}}/communities
+Content-Type: application/json
+
+{
+  "name": "notoken",
+  "description": "No auth header"
+}
+
+### 16. Join with a malformed id (expect 400)
+POST {{baseUrl}}/communities/123/join
+Authorization: Bearer {{memberToken}}
+
+### 17. Join a valid-hex id that does not exist (expect 404)
+POST {{baseUrl}}/communities/000000000000000000000000/join
+Authorization: Bearer {{memberToken}}
+
+### 18. Description longer than 500 characters (expect 400)
+POST {{baseUrl}}/communities
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "name": "longdescription",
+  "description": "This description is intentionally longer than five hundred characters to test validation. This description is intentionally longer than five hundred characters to test validation. This description is intentionally longer than five hundred characters to test validation. This description is intentionally longer than five hundred characters to test validation. This description is intentionally longer than five hundred characters to test validation. This description is intentionally longer than five hundred characters to test validation. This description is intentionally longer than five hundred characters to test validation."
+}
+
+### 19. One-character name (expect 400)
+POST {{baseUrl}}/communities
+Authorization: Bearer {{ownerToken}}
+Content-Type: application/json
+
+{
+  "name": "a",
+  "description": "Too short"
+}
+
+### 20. Search with a regex-like query (expect 200, no crash)
+GET {{baseUrl}}/communities/search?q=(
+
+### 21. Search with no q (expect 200, [])
+GET {{baseUrl}}/communities/search
