@@ -11,6 +11,7 @@ const authRoutes = require("./routes/authRoutes");
 const communityRoutes = require("./routes/communityRoutes");
 const userRoutes = require("./routes/userRoutes");
 const postRoutes = require("./routes/postRoutes");
+const chatRoutes = require("./routes/chatRoutes");
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/communities", communityRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api", postRoutes);
+app.use("/api/chat", chatRoutes);
 
 // Error Handling Middleware
 app.use(notFound);
