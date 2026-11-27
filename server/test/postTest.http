@@ -1,0 +1,220 @@
+@baseUrl = http://localhost:5000/api
+
+### 1. Register / Login User A (Author & Community Moderator)
+# @name loginA
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "hamza@example.com",
+  "password": "password123"
+}
+
+### 2. Register User B (Regular Member / Non-Author)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "member_b_test",
+  "email": "memberb@example.com",
+  "password": "password123"
+}
+
+### 3. Login User B
+# @name loginB
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "memberb@example.com",
+  "password": "password123"
+}
+
+@tokenA = {{loginA.response.body.token}}
+@tokenB = {{loginB.response.body.token}}
+
+### 4. Create a test community as User A (User A becomes moderator & auto-joins)
+# @name createCommunity
+POST {{baseUrl}}/communities
+Authorization: Bearer {{tokenA}}
+Content-Type: application/json
+
+{
+  "name": "s2_posts_test",
+  "description": "Subteam 2 integration test community"
+}
+
+@communityId = {{createCommunity.response.body._id}}
+
+### 5. Create Post (201 Created - Valid member)
+# @name createPostA
+POST {{baseUrl}}/posts
+Authorization: Bearer {{tokenA}}
+Content-Type: application/json
+
+{
+  "title": "Architecture walkthrough for Subteam 2",
+  "content": "Testing createPost with valid community membership.",
+  "communityId": "{{communityId}}"
+}
+
+@postIdA = {{createPostA.response.body._id}}
+
+### 6. Create Post (401 Unauthorized - No token)
+POST {{baseUrl}}/posts
+Content-Type: application/json
+
+{
+  "title": "Unauthorized post",
+  "content": "Should fail with 401",
+  "communityId": "{{communityId}}"
+}
+
+### 7. Create Post (400 Bad Request - Empty title)
+POST {{baseUrl}}/posts
+Authorization: Bearer {{tokenA}}
+Content-Type: application/json
+
+{
+  "title": "   ",
+  "content": "Empty title test",
+  "communityId": "{{communityId}}"
+}
+
+### 8. Create Post (400 Bad Request - Invalid communityId ObjectId)
+POST {{baseUrl}}/posts
+Authorization: Bearer {{tokenA}}
+Content-Type: application/json
+
+{
+  "title": "Bad community ID",
+  "content": "Should return 400 not 500",
+  "communityId": "not-a-valid-object-id"
+}
+
+### 9. Create Post (404 Not Found - Non-existent communityId)
+POST {{baseUrl}}/posts
+Authorization: Bearer {{tokenA}}
+Content-Type: application/json
+
+{
+  "title": "Missing community",
+  "content": "Should return 404",
+  "communityId": "000000000000000000000000"
+}
+
+### 10. Create Post (403 Forbidden - User B has not joined community yet)
+POST {{baseUrl}}/posts
+Authorization: Bearer {{tokenB}}
+Content-Type: application/json
+
+{
+  "title": "Unjoined member post",
+  "content": "Should fail with 403",
+  "communityId": "{{communityId}}"
+}
+
+### 11. Get Single Post (200 OK - Anonymous -> myVote: null)
+GET {{baseUrl}}/posts/{{postIdA}}
+
+### 12. Get Single Post (200 OK - Logged in -> myVote: 0, 1, or -1)
+GET {{baseUrl}}/posts/{{postIdA}}
+Authorization: Bearer {{tokenA}}
+
+### 13. Get Single Post (400 Bad Request - Invalid ObjectId)
+GET {{baseUrl}}/posts/invalid-id-format
+
+### 14. Get Single Post (404 Not Found - Missing post)
+GET {{baseUrl}}/posts/000000000000000000000000
+
+### 15. Global Feed (200 OK - Default sort=new, page=1, limit=10)
+GET {{baseUrl}}/posts
+
+### 16. Global Feed (200 OK - Top sort & limit clamped to 50)
+GET {{baseUrl}}/posts?sort=top&page=1&limit=100
+
+### 17. Global Feed (400 Bad Request - Invalid sort value)
+GET {{baseUrl}}/posts?sort=controversial
+
+### 18. Global Feed (400 Bad Request - Invalid page value)
+GET {{baseUrl}}/posts?page=0
+
+### 19. Community Feed (200 OK - Valid community)
+GET {{baseUrl}}/communities/s2_posts_test/posts?sort=new&page=1
+
+### 20. Community Feed (404 Not Found - Non-existent community)
+GET {{baseUrl}}/communities/nonexistent_comm_xyz/posts
+
+### 21. Update Post (200 OK - Author edits title & content; score ignored)
+PUT {{baseUrl}}/posts/{{postIdA}}
+Authorization: Bearer {{tokenA}}
+Content-Type: application/json
+
+{
+  "title": "Updated: Architecture walkthrough for Subteam 2",
+  "content": "Updated content body.",
+  "score": 9999
+}
+
+### 22. Update Post (403 Forbidden - User B is not the author)
+PUT {{baseUrl}}/posts/{{postIdA}}
+Authorization: Bearer {{tokenB}}
+Content-Type: application/json
+
+{
+  "title": "Malicious edit attempt"
+}
+
+### 23. Update Post (400 Bad Request - Invalid ObjectId)
+PUT {{baseUrl}}/posts/invalid-id-format
+Authorization: Bearer {{tokenA}}
+Content-Type: application/json
+
+{
+  "title": "Bad ID edit"
+}
+
+### 24. Update Post (404 Not Found - Non-existent post)
+PUT {{baseUrl}}/posts/000000000000000000000000
+Authorization: Bearer {{tokenA}}
+Content-Type: application/json
+
+{
+  "title": "Missing post edit"
+}
+
+### 25. User B joins community and creates a post (for Moderator soft-remove test)
+POST {{baseUrl}}/communities/{{communityId}}/join
+Authorization: Bearer {{tokenB}}
+
+### 26. User B creates Post B
+# @name createPostB
+POST {{baseUrl}}/posts
+Authorization: Bearer {{tokenB}}
+Content-Type: application/json
+
+{
+  "title": "User B post to be moderated",
+  "content": "Moderator User A will soft-remove this.",
+  "communityId": "{{communityId}}"
+}
+
+@postIdB = {{createPostB.response.body._id}}
+
+### 27. Delete Post (403 Forbidden - User B tries to delete User A's post)
+DELETE {{baseUrl}}/posts/{{postIdA}}
+Authorization: Bearer {{tokenB}}
+
+### 28. Delete Post (200 OK - Moderator User A soft-removes User B's post)
+DELETE {{baseUrl}}/posts/{{postIdB}}
+Authorization: Bearer {{tokenA}}
+
+### 29. Get Soft-Removed Post (200 OK - Returns "[removed]" title & content)
+GET {{baseUrl}}/posts/{{postIdB}}
+
+### 30. Delete Post (200 OK - Author User A hard-deletes own post)
+DELETE {{baseUrl}}/posts/{{postIdA}}
+Authorization: Bearer {{tokenA}}
+
+### 31. Get Hard-Deleted Post (404 Not Found)
+GET {{baseUrl}}/posts/{{postIdA}}

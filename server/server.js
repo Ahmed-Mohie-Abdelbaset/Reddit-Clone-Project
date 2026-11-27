@@ -1,4 +1,3 @@
-
 require("dotenv").config();
 
 const express = require("express");
@@ -11,6 +10,7 @@ const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 const authRoutes = require("./routes/authRoutes");
 const communityRoutes = require("./routes/communityRoutes");
 const userRoutes = require("./routes/userRoutes");
+const postRoutes = require("./routes/postRoutes");
 
 const app = express();
 
@@ -25,6 +25,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/communities", communityRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api", postRoutes);
 
 // Error Handling Middleware
 app.use(notFound);
