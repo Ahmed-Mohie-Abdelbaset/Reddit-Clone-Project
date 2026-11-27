@@ -1,5 +1,5 @@
-
 const Message = require("../models/Message");
+const User = require("../models/User");
 
 // Get all conversations of the logged-in user
 const getConversations = async (req, res) => {
@@ -59,4 +59,68 @@ const getConversations = async (req, res) => {
   }
 };
 
-module.exports = { getConversations };
+
+// Get messages between the logged-in user and another user
+const getMessages = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const username = req.params.username;
+
+    // Find the other user
+    const otherUser = await User.findOne({ username });
+
+    if (!otherUser) {
+      return res.status(404).json({
+        message: "User not found"
+      });
+    }
+
+    // Get page and limit from query parameters
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 30;
+
+    // Calculate how many messages to skip
+    const skip = (page - 1) * limit;
+
+    // Find messages exchanged between the two users
+    const messages = await Message.find({
+      $or: [
+        {
+          senderId: userId,
+          receiverId: otherUser._id
+        },
+        {
+          senderId: otherUser._id,
+          receiverId: userId
+        }
+      ]
+    })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("senderId", "username avatarUrl")
+      .populate("receiverId", "username avatarUrl");
+
+    // Reverse messages to show oldest first
+    messages.reverse();
+
+    res.status(200).json({
+      page,
+      limit,
+      messages
+    });
+
+  } catch (error) {
+    console.error("Get messages error:", error);
+    res.status(500).json({
+      message: "Server error"
+    });
+  }
+};
+
+
+// Export controller functions
+module.exports = {
+  getConversations,
+  getMessages
+};
