@@ -1,6 +1,18 @@
 @baseUrl = http://localhost:5000/api
-@token =reddit_clone_secret_9f8a7d6c5b4e3a21
 @username = hamzah_dev
+
+### 0. Login to get a fresh token (Run this first!)
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "hamzah@example.com",
+  "password": "password123"
+}
+
+###
+@token = {{login.response.body.token}}
 
 ### 1. Get public user profile (Expect 200, no passwordHash, empty posts/comments)
 GET {{baseUrl}}/users/{{username}}
