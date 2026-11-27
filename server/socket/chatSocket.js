@@ -77,6 +77,38 @@ const initializeChatSocket = (io) => {
     });
 
 
+        // Handle reading messages
+    socket.on("chat:read", async (data) => {
+    try {
+        const { senderId } = data;
+
+        // Check if the sender ID is valid
+        if (!mongoose.Types.ObjectId.isValid(senderId)) {
+        return;
+        }
+
+        // Mark messages from this user as read
+        await Message.updateMany(
+        {
+            senderId: senderId,
+            receiverId: socket.userId,
+            isRead: false
+        },
+        {
+            isRead: true
+        }
+        );
+
+        // Notify the sender that their messages were read
+        io.to(senderId).emit("chat:read", {
+        readerId: socket.userId
+        });
+
+    } catch (error) {
+        console.error("Socket mark as read error:", error);
+    }
+    });
+
     // Handle disconnection
     socket.on("disconnect", () => {
       console.log("User disconnected:", socket.userId);
