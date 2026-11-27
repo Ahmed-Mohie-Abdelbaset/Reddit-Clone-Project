@@ -10,6 +10,7 @@ const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 
 const authRoutes = require("./routes/authRoutes");
 const communityRoutes = require("./routes/communityRoutes");
+const userRoutes = require("./routes/userRoutes");
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use(express.json());
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/communities", communityRoutes);
+app.use("/api/users", userRoutes);
 
 // Error Handling Middleware
 app.use(notFound);
