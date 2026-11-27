@@ -354,6 +354,7 @@ const updatePost = async (req, res, next) => {
     }
 
     const { title, content } = req.body;
+    let postContentChanged = false;
 
     if (title === undefined && content === undefined) {
       res.status(400);
@@ -370,6 +371,10 @@ const updatePost = async (req, res, next) => {
         res.status(400);
         throw new Error("Title cannot exceed 300 characters");
       }
+      if (post.title !== title.trim()) {
+        postContentChanged = true;
+      }
+
       post.title = title.trim();
     }
 
@@ -382,10 +387,21 @@ const updatePost = async (req, res, next) => {
         res.status(400);
         throw new Error("Content cannot exceed 10000 characters");
       }
-      post.content = content;
+      if (post.content !== content) {
+      postContentChanged = true;
+    }
+
+    post.content = content;
     }
 
     // 5. Explicitly record edit timestamp
+    // 5. Clear old AI summary if post content changed
+    if (postContentChanged) {
+      post.aiSummary.text = null;
+      post.aiSummary.generatedAt = null;
+    }
+
+    // 6. Explicitly record edit timestamp
     post.editedAt = new Date();
     await post.save();
 
