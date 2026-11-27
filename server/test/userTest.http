@@ -1,0 +1,34 @@
+@baseUrl = http://localhost:5000/api
+@token =reddit_clone_secret_9f8a7d6c5b4e3a21
+@username = hamzah_dev
+
+### 1. Get public user profile (Expect 200, no passwordHash, empty posts/comments)
+GET {{baseUrl}}/users/{{username}}
+
+### 2. Get unknown user (Expect 404)
+GET {{baseUrl}}/users/nonexistent_user_99999
+
+### 3. Search users (normal query)
+GET {{baseUrl}}/users/search?q=hamzah&limit=10
+
+### 4. Search users (regex-safe check — should not crash or match everyone)
+GET {{baseUrl}}/users/search?q=.*[a-z(
+
+### 5. Update own profile (Expect 200)
+PUT {{baseUrl}}/users/profile
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "bio": "CSE 343 Web Dev — Subteam 1",
+  "avatarUrl": "https://example.com/avatar.png"
+}
+
+### 6. Update profile with invalid avatarUrl (Expect 400)
+PUT {{baseUrl}}/users/profile
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "avatarUrl": "not-a-valid-url"
+}
