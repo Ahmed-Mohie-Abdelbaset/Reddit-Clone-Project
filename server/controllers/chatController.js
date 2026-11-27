@@ -203,9 +203,33 @@ const markAsRead = async (req, res) => {
   }
 };
 
+// Get total unread messages of the logged-in user
+const getUnreadCount = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Count all unread messages received by this user
+    const unreadCount = await Message.countDocuments({
+      receiverId: userId,
+      isRead: false
+    });
+
+    res.status(200).json({
+      unreadCount: unreadCount
+    });
+
+  } catch (error) {
+    console.error("Get unread count error:", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+  }
+};
 module.exports = {
   getConversations,
   getMessages,
   sendMessage,
-  markAsRead
+  markAsRead,
+  getUnreadCount
 };
