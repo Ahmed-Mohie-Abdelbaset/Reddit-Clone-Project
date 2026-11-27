@@ -163,8 +163,49 @@ const sendMessage = async (req, res) => {
   }
 };
 
+// Mark messages from another user as read
+const markAsRead = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const username = req.params.username;
+
+    // Find the other user
+    const otherUser = await User.findOne({ username });
+
+    if (!otherUser) {
+      return res.status(404).json({
+        message: "User not found"
+      });
+    }
+
+    // Mark all unread messages from this user as read
+    await Message.updateMany(
+      {
+        senderId: otherUser._id,
+        receiverId: userId,
+        isRead: false
+      },
+      {
+        isRead: true
+      }
+    );
+
+    res.status(200).json({
+      message: "Messages marked as read"
+    });
+
+  } catch (error) {
+    console.error("Mark as read error:", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+  }
+};
+
 module.exports = {
   getConversations,
   getMessages,
-  sendMessage
+  sendMessage,
+  markAsRead
 };
