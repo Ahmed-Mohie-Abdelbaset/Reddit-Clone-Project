@@ -118,9 +118,53 @@ const getMessages = async (req, res) => {
   }
 };
 
+// Send a message to another user
+const sendMessage = async (req, res) => {
+  try {
+    const senderId = req.user._id;
+    const username = req.params.username;
+    const content = req.body.content;
 
-// Export controller functions
+    // Find the receiver
+    const receiver = await User.findOne({ username });
+
+    if (!receiver) {
+      return res.status(404).json({
+        message: "User not found"
+      });
+    }
+
+    // Check if the message is empty
+    if (!content || !content.trim()) {
+      return res.status(400).json({
+        message: "Message cannot be empty"
+      });
+    }
+
+    // Create a new message
+    const message = await Message.create({
+      senderId: senderId,
+      receiverId: receiver._id,
+      content: content
+    });
+
+    // Populate sender and receiver information
+    await message.populate("senderId", "username avatarUrl");
+    await message.populate("receiverId", "username avatarUrl");
+
+    res.status(201).json(message);
+
+  } catch (error) {
+    console.error("Send message error:", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+  }
+};
+
 module.exports = {
   getConversations,
-  getMessages
+  getMessages,
+  sendMessage
 };
